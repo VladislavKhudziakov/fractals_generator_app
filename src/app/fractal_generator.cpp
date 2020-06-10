@@ -43,7 +43,7 @@ void App::fractal_generator::make_fractal(uint32_t depth)
     m_lines.clear();
 
     if (m_points.size() % 2 != 0) {
-        throw std::runtime_error("invalid points count");
+        return;
     }
 
     while (!m_points.empty()) {
