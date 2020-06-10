@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource prefix="/">
+        <file>main.qml</file>
+    </qresource>
+
+    <qresource prefix="Components">
+        <file>LinesRenderSurface.qml</file>
+    </qresource>
+</RCC>
