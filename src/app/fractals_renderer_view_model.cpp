@@ -12,6 +12,23 @@ App::fractals_renderer_view_model::fractals_renderer_view_model(
     : QObject(parent)
     , m_model(mdl)
 {
+    m_model->subscribe_lines_handler([this]() {
+        m_model->handle_lines([this](const std::vector<fractal_line>& fractal_lines) {
+            m_lines.clear();
+
+            if (!fractal_lines.empty()) {
+                m_lines.reserve(fractal_lines.size() * fractal_lines.front().get_lines().size());
+
+                for (const auto& fl : fractal_lines) {
+                    for (const auto& l : fl.get_lines()) {
+                        m_lines.emplace_back(line::create(l->get_begin(), l->get_end()));
+                    }
+                }
+
+                emit initDraw();
+            }
+        });
+    });
 }
 
 
@@ -21,10 +38,6 @@ App::fractals_renderer_view_model::~fractals_renderer_view_model() = default;
 
 QList<QObject*> App::fractals_renderer_view_model::get_lines() const
 {
-    m_lines.clear();
-
-    m_lines = m_model->get_lines();
-
     QList<QObject*> res;
 
     for (const auto& l : m_lines) {

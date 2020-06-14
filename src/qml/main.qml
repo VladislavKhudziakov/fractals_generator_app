@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.11
 import QtQuick.Window 2.2
 
 import QtQuick.Controls.Material 2.2
+import QtQuick.Dialogs 1.1
 
 import App 1.0
 
@@ -19,6 +20,17 @@ ApplicationWindow {
     Material.accent: Material.Purple
 
 
+    MessageDialog {
+        id: notifier
+        property int mouse_clicks
+        title: "Attempt"
+        text: "invalid points count " + this.mouse_clicks + ". Clear or add even count of points."
+        onAccepted: {
+            Qt.quit()
+        }
+    }
+
+
     ColumnLayout {
         anchors.fill: parent
         
@@ -29,6 +41,7 @@ ApplicationWindow {
             LinesRenderSurface {
                 id: fractalsRenderer
                 view_model: ViewModelsFactory.make_fractals_renderer_vm(this)
+                counter: notifier
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
@@ -67,7 +80,6 @@ ApplicationWindow {
                     enabled: recursionInput.text != ""
                     onClicked: {
                         fractalsRenderer.view_model.calculate_fractal(recursionInput.text);
-                        fractalsRenderer.view_model.onInitDraw();
                     }
                 }
 

@@ -7,6 +7,7 @@ Canvas {
     id: root
 
     property var view_model
+    property var counter
             
     property bool isFirst: true
 
@@ -20,6 +21,9 @@ Canvas {
     }
 
     function draw() {
+        if (counter) {
+            counter.mouse_clicks = 0;
+        }
         var lines = root.view_model.lines;
 
         for (let index = 0; index < lines.length; index++) {
@@ -52,6 +56,9 @@ Canvas {
         onClicked: {
             if (mouse.button == Qt.LeftButton) {
                 root.view_model.mouse_clicked(this.mouseX, this.mouseY);
+                if (counter) {
+                    counter.mouse_clicks++;
+                }
             }
         }
     }

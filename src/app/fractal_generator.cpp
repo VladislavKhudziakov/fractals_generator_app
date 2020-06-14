@@ -8,6 +8,8 @@
 #include <QVector3D>
 #include <QMatrix3x3>
 
+#include <thread>
+
 
 App::fractal_line::fractal_line(QPointF begin, QPointF end)
 {
@@ -18,7 +20,7 @@ App::fractal_line::fractal_line(QPointF begin, QPointF end)
 }
 
 
-const std::vector<std::unique_ptr<App::line>> &App::fractal_line::get_lines() const
+const std::vector<std::unique_ptr<App::line>>& App::fractal_line::get_lines() const
 {
     return m_lines;
 }
@@ -40,42 +42,41 @@ void App::fractal_line::generate(const std::vector<QPointF>& points)
 
 void App::fractal_generator::make_fractal(uint32_t depth)
 {
-    m_lines.clear();
+    std::thread t([this, depth]() {
+        std::lock_guard lines_guard(m_lines_mutex);
+        m_lines.clear();
 
-    if (m_points.size() % 2 != 0) {
-        return;
-    }
+        std::unique_lock points_guard(m_points_mutex);
 
-    while (!m_points.empty()) {
-        const auto e = m_points.top();
-        m_points.pop();
-        const auto b = m_points.top();
-        m_points.pop();
-        auto& line = m_lines.emplace_back(b, e);
-        line.generate(m_points_pattern);
-    }
-
-    for (size_t i = 0; i < depth; ++i) {
-        make_fractals_generation();
-    }
-}
-
-
-std::vector<std::unique_ptr<App::line>> App::fractal_generator::get_lines() const
-{
-    std::vector<std::unique_ptr<line>> ret;
-
-    if (!m_lines.empty()) {
-        ret.reserve(m_lines.size() * m_lines.front().get_lines().size());
-
-        for (const auto& fl : m_lines) {
-            for (const auto& l : fl.get_lines()) {
-                ret.emplace_back(line::create(l->get_begin(), l->get_end()));
-            }
+        if (m_points.size() % 2 != 0) {
+            return;
         }
-    }
 
-    return ret;
+        while (!m_points.empty()) {
+            const auto e = m_points.top();
+            m_points.pop();
+            const auto b = m_points.top();
+            m_points.pop();
+            auto& line = m_lines.emplace_back(b, e);
+            line.generate(m_points_pattern);
+        }
+
+        points_guard.unlock();
+
+        std::lock_guard pattern_guard(m_points_pattern_mutex);
+
+        for (size_t i = 0; i < depth; ++i) {
+            make_fractals_generation();
+        }
+
+          std::lock_guard g(m_lines_handlers_mutex);
+
+        for (const auto& handler : m_lines_handlers) {
+            handler();
+        }
+    });
+
+    t.detach();
 }
 
 
@@ -102,12 +103,14 @@ void App::fractal_generator::make_fractals_generation()
 
 void App::fractal_generator::push_point(QPointF p)
 {
+    std::lock_guard g(m_points_pattern_mutex);
     m_points.push(p);
 }
 
 
 void App::fractal_generator::set_points_pattern(const std::vector<QPointF>& new_pattern)
 {
+    std::lock_guard g(m_points_pattern_mutex);
     m_points_pattern = new_pattern;
 }
 
@@ -132,4 +135,11 @@ App::fractal_generator::fractal_generator()
     m_points_pattern = {
         a, b, c, d, e
     };
+}
+
+
+void App::fractal_generator::subscribe_lines_handler(const App::fractal_generator::lines_handler& h)
+{
+    std::lock_guard g(m_lines_handlers_mutex);
+    m_lines_handlers.emplace_back(h);
 }

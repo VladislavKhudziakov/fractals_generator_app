@@ -5,9 +5,10 @@
 
 #include <src/app/line.hpp>
 
-#include <stack>
-
 #include <QTransform>
+
+#include <mutex>
+#include <stack>
 
 namespace App
 {
@@ -26,15 +27,32 @@ namespace App
     class fractal_generator
     {
     public:
+        using lines_handler = std::function<void()>;
         fractal_generator();
         void make_fractal(uint32_t depth);
         void push_point(QPointF);
-        std::vector<std::unique_ptr<line>> get_lines() const;
+
+        void subscribe_lines_handler(const lines_handler&);
+
+        template<typename CallbackType>
+        void handle_lines(CallbackType&& cb) const
+        {
+            std::unique_lock g(m_lines_mutex, std::try_to_lock);
+            cb(m_lines);
+        }
+
         void set_points_pattern(const std::vector<QPointF>&);
     private:
         void make_fractals_generation();
+
         std::vector<fractal_line> m_lines;
         std::stack<QPointF> m_points;
         std::vector<QPointF> m_points_pattern;
+        std::vector<lines_handler> m_lines_handlers;
+
+        mutable std::mutex m_lines_mutex;
+        mutable std::mutex m_lines_handlers_mutex;
+        mutable std::mutex m_points_mutex;
+        mutable std::mutex m_points_pattern_mutex;
     };
 }
